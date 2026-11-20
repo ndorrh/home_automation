@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Remote microphone, webcam, and screen dashboard for your Smart Home PC." />
+  <title>Smart Home AV Monitor</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Ccircle cx='32' cy='32' r='16' fill='%2338bdf8'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%230f172a'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <main id="login-view" class="auth-shell hidden">
+    <section class="card auth-card">
+      <div class="brand-mark">SH</div>
+      <h1>Smart Home AV</h1>
+      <p class="muted">Sign in to unlock controls and decrypt stored recordings.</p>
+      <form id="login-form" novalidate>
+        <label for="password-input">Password</label>
+        <input id="password-input" type="password" autocomplete="current-password" required placeholder="Enter password" />
+        <p id="login-error" class="field-error hidden" role="alert"></p>
+        <button type="submit" class="btn btn-primary full-width">Sign In</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="dashboard-view" class="app-shell hidden">
+    <header class="topbar card">
+      <div class="brand-row">
+        <div class="brand-mark small-mark">SH</div>
+        <div>
+          <h1>Smart Home AV</h1>
+          <p class="muted small">Encrypted Audio, Webcam &amp; Screen Node</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span id="ws-badge" class="badge badge-warn">WS: Connecting</span>
+        <span id="power-badge" class="badge badge-info">Awake: --</span>
+        <button id="release-devices-btn" class="btn btn-warn" type="button">Force Release Devices</button>
+        <button id="logout-btn" class="btn btn-ghost" type="button">Sign Out</button>
+      </div>
+    </header>
+
+    <section class="card status-strip">
+      <div class="url-item">
+        <span class="label">Local Wi-Fi / Hotspot</span>
+        <span id="lan-urls" class="mono">Loading...</span>
+      </div>
+      <div class="url-item">
+        <span class="label">Remote Tunnel</span>
+        <span id="tunnel-url" class="mono">Waiting...</span>
+      </div>
+    </section>
+
+    <nav class="main-nav" role="tablist" aria-label="Dashboard sections">
+      <button class="nav-tab active" data-tab="live" type="button" role="tab" aria-selected="true">Live Monitor</button>
+      <button class="nav-tab" data-tab="recordings" type="button" role="tab" aria-selected="false">Recordings</button>
+      <button class="nav-tab" data-tab="schedules" type="button" role="tab" aria-selected="false">Schedules</button>
+      <button class="nav-tab" data-tab="system" type="button" role="tab" aria-selected="false">System &amp; Guide</button>
+    </nav>
+
+    <section class="tab-panel" data-panel="live">
+      <div class="grid">
+        <article class="card panel-card">
+          <div class="card-head">
+            <h2>Microphone</h2>
+            <span id="mic-state-badge" class="badge">Idle</span>
+          </div>
+          <div class="meter-wrap" aria-label="Microphone audio level">
+            <div id="mic-level-bar" class="meter-fill"></div>
+          </div>
+          <div class="btn-row">
+            <button id="mic-listen-btn" class="btn btn-primary" type="button">Start Live Listen</button>
+            <button id="mic-record-btn" class="btn btn-danger" type="button">Record WAV</button>
+          </div>
+          <p id="mic-recording-label" class="muted small">Not recording</p>
+        </article>
+
+        <article class="card panel-card">
+          <div class="card-head">
+            <h2>Webcam</h2>
+            <span id="cam-state-badge" class="badge">Idle</span>
+          </div>
+          <div id="cam-frame" class="video-frame">
+            <img id="cam-feed" alt="Live webcam preview" class="hidden" />
+            <div id="cam-placeholder" class="video-placeholder">Live preview is off</div>
+            <button class="btn btn-ghost fs-exit-btn" data-fs-exit="cam-frame" type="button">Exit Fullscreen</button>
+          </div>
+          <div class="btn-row">
+            <button id="cam-stream-btn" class="btn btn-primary" type="button">Start Live View</button>
+            <button id="cam-snap-btn" class="btn btn-secondary" type="button">Take Snapshot</button>
+            <button id="cam-record-btn" class="btn btn-danger" type="button">Record MP4</button>
+            <button id="cam-fs-btn" class="btn btn-ghost" type="button">Fullscreen</button>
+          </div>
+          <p id="cam-recording-label" class="muted small">Not recording</p>
+        </article>
+
+        <article class="card panel-card">
+          <div class="card-head">
+            <h2>Screen Capture</h2>
+            <span id="screen-state-badge" class="badge">Idle</span>
+          </div>
+          <div id="screen-frame" class="video-frame">
+            <img id="screen-feed" alt="Live screen preview" class="hidden" />
+            <div id="screen-placeholder" class="video-placeholder">Screen preview is off</div>
+            <button class="btn btn-ghost fs-exit-btn" data-fs-exit="screen-frame" type="button">Exit Fullscreen</button>
+          </div>
+          <div class="inline-row">
+            <label for="monitor-select" class="small muted">Display:</label>
+            <select id="monitor-select" class="input-sm"></select>
+          </div>
+          <div class="btn-row">
+            <button id="screen-stream-btn" class="btn btn-primary" type="button">Live Screen</button>
+            <button id="screen-snap-btn" class="btn btn-secondary" type="button">Screenshot</button>
+            <button id="screen-record-btn" class="btn btn-danger" type="button">Record Screen</button>
+            <button id="screen-fs-btn" class="btn btn-ghost" type="button">Fullscreen</button>
+          </div>
+          <p id="screen-recording-label" class="muted small">Not recording</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="tab-panel hidden" data-panel="recordings">
+      <div class="card">
+        <div class="card-head">
+          <h2>Saved Recordings (Encrypted at Rest)</h2>
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-kind="" type="button">All</button>
+            <button class="tab" data-kind="audio" type="button">Audio</button>
+            <button class="tab" data-kind="snapshots" type="button">Snapshots</button>
+            <button class="tab" data-kind="video" type="button">Video</button>
+            <button class="tab" data-kind="screen" type="button">Screen</button>
+          </div>
+        </div>
+        <div id="recordings-list" class="recordings-list">
+          <p class="muted">No recordings yet.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel hidden" data-panel="schedules">
+      <div class="card">
+        <div class="card-head">
+          <h2>Recording Schedules</h2>
+          <span class="muted small">Persisted across reboots</span>
+        </div>
+        <form id="schedule-form" class="schedule-form">
+          <input id="sched-name" type="text" placeholder="Job name (e.g. Night Mic)" required />
+          <select id="sched-target">
+            <option value="audio_record">Mic Record (WAV)</option>
+            <option value="camera_snapshot">Camera Snapshot</option>
+            <option value="camera_record">Camera Record (MP4)</option>
+            <option value="screen_snapshot">Screen Snapshot</option>
+            <option value="screen_record">Screen Record (MP4)</option>
+          </select>
+          <select id="sched-mode">
+            <option value="daily">Daily (HH:MM)</option>
+            <option value="interval">Every N Minutes</option>
+            <option value="once">One-Time</option>
+          </select>
+          <input id="sched-time" type="time" value="08:00" />
+          <input id="sched-interval" class="hidden" type="number" min="1" max="10080" value="30" placeholder="Minutes" />
+          <input id="sched-runat" class="hidden" type="datetime-local" />
+          <input id="sched-duration" type="number" min="5" max="3600" value="30" title="Duration in seconds" placeholder="Duration (s)" />
+          <button class="btn btn-primary" type="submit">Add Schedule</button>
+        </form>
+        <div id="schedules-list" class="recordings-list">
+          <p class="muted">No schedules configured.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel hidden" data-panel="system">
+      <div class="card">
+        <div class="card-head">
+          <h2>System, Hotspot, Logs &amp; Remote Scripts</h2>
+          <div class="btn-row" style="margin:0;">
+            <button id="sys-clear-logs-btn" class="btn btn-warn" type="button">Clear Logs</button>
+            <button id="sys-refresh-btn" class="btn btn-secondary" type="button">Refresh Status &amp; Logs</button>
+          </div>
+        </div>
+        <div id="sys-badges" class="btn-row">
+          <span id="sys-pid-badge" class="badge">PID: --</span>
+          <span id="sys-task-badge" class="badge">Task: --</span>
+          <span id="sys-fw-badge" class="badge">Firewall: --</span>
+          <span id="sys-hotspot-badge" class="badge">Hotspot: --</span>
+          <span id="sys-env-badge" class="badge">.env: --</span>
+        </div>
+        <div id="sys-scripts-list" class="scripts-grid"></div>
+        <pre id="sys-script-output" class="console-box hidden" aria-live="polite"></pre>
+        <div class="card-head" style="margin-top:1.1rem;">
+          <h3>Live Server Logs (logs/server.log)</h3>
+          <label class="small muted"><input id="sys-log-auto" type="checkbox" checked /> Auto-refresh (5s)</label>
+        </div>
+        <pre id="sys-logs-box" class="console-box">Loading logs...</pre>
+        <div class="guide-box">
+          <h3>Guide: Scripts &amp; Moving to Another PC</h3>
+          <div class="guide-content small muted">
+            <p><strong>Moving to a 2nd Windows PC:</strong></p>
+            <ol>
+              <li>Copy this project folder to the new PC (you may omit <code>.venv</code>, <code>bin</code>, and <code>mailer/node_modules</code>—first run rebuilds them automatically).</li>
+              <li>Double-click <code>run.bat</code>: it creates <code>.venv</code>, downloads <code>bin/cloudflared.exe</code>, installs Nodemailer, prompts once for Windows Firewall, hides <code>.env</code>, registers the <code>SmartHomeAVServer</code> logon task, starts silently, and opens <code>http://localhost:8000</code>.</li>
+              <li>Run <code>.\.venv\Scripts\python.exe .\scripts\set_gmail.py</code> once on the new PC so Gmail credentials are sealed with that PC's DPAPI key.</li>
+            </ol>
+            <p><strong>Script Reference:</strong></p>
+            <ul>
+              <li><code>run.bat</code> — Auto-setup + silent background start (terminal closes) + opens dashboard in browser.</li>
+              <li><code>run_console.bat</code> — Foreground terminal mode showing live server logs for debugging.</li>
+              <li><code>check_status.bat</code> — Shows PIDs, Scheduled Task state, HTTP reachability, and recent URLs.</li>
+              <li><code>scripts/fix_firewall.ps1</code> (runnable above) — Adds TCP port 8000 rule for Wi-Fi &amp; Hotspot phones (triggers UAC on PC).</li>
+              <li><code>scripts/hotspot_control.ps1</code> (Hotspot ON/OFF above) — Auto-starts PC hotspot if internet stays offline, or toggle manually.</li>
+              <li><code>scripts/protect_env.ps1</code> (Hide/Unhide .env above) — Locks <code>.env</code> with Windows Hidden + System + Read-Only attributes.</li>
+              <li><code>scripts/set_password.py</code> / <code>scripts/set_gmail.py</code> / <code>scripts/decrypt_recording.py</code> — Local CLI tools for password rotation, Gmail sealing, and offline file decryption.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/static/audio_player.js" defer></script>
+  <script src="/static/schedules.js" defer></script>
+  <script src="/static/recordings.js" defer></script>
+  <script src="/static/system.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

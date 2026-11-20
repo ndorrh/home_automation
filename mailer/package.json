@@ -1,0 +1,10 @@
+{
+  "name": "smart-home-av-mailer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Nodemailer helper for Smart Home AV Server URL notifications",
+  "dependencies": {
+    "nodemailer": "^6.9.16"
+  }
+}

@@ -1,0 +1,11 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+node_modules/
+mailer/node_modules/
+recordings/
+logs/
+bin/
+data/
+.pytest_cache/
